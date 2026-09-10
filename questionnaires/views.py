@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from children.models import Child
 
@@ -64,6 +65,7 @@ def child_home(request, child_id):
     })
 
 
+@xframe_options_sameorigin  # 供編輯器右欄的預覽 iframe 內嵌（同源）
 @login_required
 def fill_page(request, version_id):
     """家長端填答頁的外殼。實際的題目呈現與分支邏輯在前端 Vue 元件，
