@@ -74,16 +74,25 @@ Fedora / Windows 的差異見 `.env.example` 內的註解。
 
 | 網址 | 對象 | 說明 |
 |---|---|---|
+| `/` | 全體 | 首頁，選擇「家長」或「醫護人員」入口 |
 | `/admin/` | 工程 | Django Admin，完整的資料維護 |
 | `/build/` | 兒科部醫護 | 問卷管理列表（新增問卷、看各版本狀態） |
 | `/build/version/<id>/` | 兒科部醫護 | 三欄視覺化編輯器：大綱 / 題目卡 / 家長端即時預覽 |
-| `/` | 家長 | 入口，選擇孩子（僅一個孩子時直接進入） |
+| `/accounts/register/` | 家長 | 註冊帳號（成功後導向登錄第一個孩子） |
+| `/accounts/login/` | 家長 | 登入 |
+| `/parent/` | 家長 | 名下孩子清單、新增孩子 |
+| `/parent/child/add/` | 家長 | 登錄孩子資料（姓名、出生日期、病歷號、追蹤狀態） |
 | `/child/<id>/` | 家長 | 該童的待填清單（未完成／未記錄）與已完成歷史 |
 | `/fill/<version_id>/?child=<id>` | 家長 | 一次一題填答頁；`?preview=1` 為預覽模式（不寫入） |
+
+> 家長帳密流程（`accounts` app）僅供展示與測試。院方 APP 介接後，家長身分
+> 改由 APP 帶入，`_children_for()` 只留 `guardian` 過濾。
 
 ---
 
 ## 資料模型
+
+應用程式：`accounts`（家長帳號）、`children`（兒童）、`questionnaires`（問卷核心）
 
 ```
 Questionnaire（問卷主檔：名稱／分類／Tier）
@@ -145,11 +154,12 @@ python manage.py check
 ```
 
 測試檔：
-- `tests.py` — 版本不可覆寫、狀態轉換、分支目標約束、Admin 煙霧測試
-- `tests_logic.py` — 分支判斷、適用規則、待填問卷推導
-- `tests_api.py` — 家長端五個端點的端對端
-- `tests_views.py` — 家長端入口頁
-- `tests_builder.py` — 問卷編輯器 API
+- `questionnaires/tests.py` — 版本不可覆寫、狀態轉換、分支目標約束、Admin 煙霧測試
+- `questionnaires/tests_logic.py` — 分支判斷、適用規則、待填問卷推導
+- `questionnaires/tests_api.py` — 家長端五個端點的端對端
+- `questionnaires/tests_views.py` — 家長端入口頁
+- `questionnaires/tests_builder.py` — 問卷編輯器 API
+- `accounts/tests.py` — 家長註冊、登入登出、孩子登錄
 
 ### 跨機器開發
 
