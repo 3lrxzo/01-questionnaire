@@ -1,0 +1,11 @@
+{
+  "name": "金寶貝健康問卷",
+  "short_name": "健康問卷",
+  "description": "馬偕金寶貝智能化居家互動整合平台 —— 健康問卷模組",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f6f5",
+  "theme_color": "#2f6f4f",
+  "lang": "zh-Hant",
+  "icons": []
+}

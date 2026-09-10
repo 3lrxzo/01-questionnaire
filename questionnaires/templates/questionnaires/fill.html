@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ version.questionnaire.name }}{% endblock %}
+
+{% block style %}
+  .wrap { max-width: 560px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  header { padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border); }
+  header h1 { margin: 0; font-size: 1.05rem; }
+  header .meta { color: var(--muted); font-size: .8rem; margin-top: 2px; }
+  .preview-badge { display: inline-block; background: #eee2b8; color: #7a5c1e; font-size: .72rem;
+                   padding: 2px 8px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
+  .progress { height: 4px; background: var(--border); }
+  .progress > span { display: block; height: 100%; background: var(--brand); transition: width .3s; }
+  main { flex: 1; padding: 28px 20px; }
+  .qcard { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+  .qprompt { font-size: 1.15rem; font-weight: 600; margin: 0 0 4px; }
+  .qhelp { color: var(--muted); font-size: .88rem; margin: 0 0 18px; }
+  .opt { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border: 1.5px solid var(--border);
+         border-radius: 10px; margin-bottom: 10px; cursor: pointer; transition: border-color .15s, background .15s; }
+  .opt:hover { border-color: var(--brand); }
+  .opt.selected { border-color: var(--brand); background: #eef5f1; }
+  .opt input { accent-color: var(--brand); width: 18px; height: 18px; }
+  input[type=number], input[type=text], input[type=datetime-local] {
+    width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 1rem; font-family: inherit;
+  }
+  .scale { display: flex; flex-wrap: wrap; gap: 8px; }
+  .scale button { flex: 1 1 auto; min-width: 44px; padding: 10px 0; border: 1.5px solid var(--border);
+                  background: var(--card); border-radius: 8px; font-size: 1rem; cursor: pointer; }
+  .scale button.selected { border-color: var(--brand); background: var(--brand); color: #fff; }
+  .scale-labels { display: flex; justify-content: space-between; color: var(--muted); font-size: .78rem; margin-top: 6px; }
+  footer { padding: 16px 20px; background: var(--card); border-top: 1px solid var(--border);
+           display: flex; gap: 12px; position: sticky; bottom: 0; }
+  button.btn { flex: 1; padding: 13px; border-radius: 10px; font-size: 1rem; font-weight: 600;
+               border: 1.5px solid var(--brand); cursor: pointer; }
+  button.btn.primary { background: var(--brand); color: #fff; }
+  button.btn.ghost { background: var(--card); color: var(--brand); }
+  button.btn:disabled { opacity: .45; cursor: not-allowed; }
+  .savehint { text-align: center; color: var(--muted); font-size: .78rem; padding: 6px; min-height: 1.4em; }
+  .state-msg { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .done { text-align: center; padding: 60px 24px; }
+  .done .tick { width: 64px; height: 64px; border-radius: 50%; background: var(--brand); color: #fff;
+                font-size: 2rem; line-height: 64px; margin: 0 auto 18px; }
+  .error-box { background: #f7e4e4; color: var(--danger); border-radius: 10px; padding: 12px 14px;
+               font-size: .88rem; margin-bottom: 16px; }
+{% endblock %}
+
+{% block body %}
+<div id="app" class="wrap" data-version-id="{{ version.id }}" data-preview="{{ preview|yesno:'1,0' }}"
+     data-child-id="{{ child_id }}"
+     data-schema-url="{% url 'questionnaires:api-version-schema' version.id %}"
+     data-responses-url="{% url 'questionnaires:api-response-create' %}"
+     data-csrf="{{ csrf_token }}">
+
+  <template v-if="loading"><div class="state-msg">載入中…</div></template>
+  <template v-else-if="loadError"><div class="state-msg">{[ loadError ]}</div></template>
+
+  <template v-else-if="completed">
+    <div class="done">
+      <div class="tick">✓</div>
+      <h2>已完成</h2>
+      <p style="color:var(--muted)">感謝您的填答，結果已回存至孩子的健康紀錄。</p>
+    </div>
+  </template>
+
+  <template v-else>
+    <header>
+      <h1>
+        {[ schema.questionnaire_name ]}
+        <span v-if="isPreview" class="preview-badge">預覽模式</span>
+      </h1>
+      <div class="meta">
+        <span v-if="schema.tier">{[ schema.tier.name ]}・</span>
+        v{[ schema.version_number ]}・第 {[ currentIndex + 1 ]} / {[ visibleQuestions.length ]} 題
+      </div>
+    </header>
+    <div class="progress"><span :style="{ width: progressPct + '%' }"></span></div>
+
+    <main>
+      <div v-if="submitError" class="error-box">{[ submitError ]}</div>
+
+      <div class="qcard" v-if="currentQuestion" :key="currentQuestion.id">
+        <p class="qprompt">
+          {[ currentQuestion.prompt ]}
+          <span v-if="currentQuestion.required" style="color:var(--danger)">＊</span>
+        </p>
+        <p class="qhelp" v-if="currentQuestion.help_text">{[ currentQuestion.help_text ]}</p>
+
+        <!-- 單選 -->
+        <template v-if="currentQuestion.question_type === 'single'">
+          <label v-for="opt in currentQuestion.options" :key="opt.id"
+                 class="opt" :class="{ selected: answers[currentQuestion.id] === opt.value }">
+            <input type="radio" :value="opt.value" v-model="answers[currentQuestion.id]"
+                   @change="onAnswerChanged">
+            <span>{[ opt.label ]}</span>
+          </label>
+        </template>
+
+        <!-- 複選 -->
+        <template v-else-if="currentQuestion.question_type === 'multi'">
+          <label v-for="opt in currentQuestion.options" :key="opt.id"
+                 class="opt" :class="{ selected: (answers[currentQuestion.id] || []).includes(opt.value) }">
+            <input type="checkbox" :value="opt.value" v-model="answers[currentQuestion.id]"
+                   @change="onAnswerChanged">
+            <span>{[ opt.label ]}</span>
+          </label>
+        </template>
+
+        <!-- 數值 -->
+        <template v-else-if="currentQuestion.question_type === 'number'">
+          <input type="number" v-model="answers[currentQuestion.id]" @input="onAnswerChanged"
+                 :min="currentQuestion.config.min" :max="currentQuestion.config.max"
+                 :step="currentQuestion.config.step || 'any'"
+                 :placeholder="currentQuestion.config.unit ? ('單位：' + currentQuestion.config.unit) : ''">
+        </template>
+
+        <!-- 量表 -->
+        <template v-else-if="currentQuestion.question_type === 'scale'">
+          <div class="scale">
+            <button v-for="n in scaleRange(currentQuestion)" :key="n"
+                    :class="{ selected: String(answers[currentQuestion.id]) === String(n) }"
+                    @click="answers[currentQuestion.id] = n; onAnswerChanged()">{[ n ]}</button>
+          </div>
+          <div class="scale-labels" v-if="currentQuestion.config.min_label || currentQuestion.config.max_label">
+            <span>{[ currentQuestion.config.min_label ]}</span>
+            <span>{[ currentQuestion.config.max_label ]}</span>
+          </div>
+        </template>
+
+        <!-- 簡短文字 -->
+        <template v-else-if="currentQuestion.question_type === 'text'">
+          <input type="text" v-model="answers[currentQuestion.id]" @input="onAnswerChanged" maxlength="200">
+        </template>
+
+        <!-- 日期／時間 -->
+        <template v-else-if="currentQuestion.question_type === 'datetime'">
+          <input type="datetime-local" v-model="answers[currentQuestion.id]" @input="onAnswerChanged">
+        </template>
+      </div>
+
+      <div class="savehint">{[ saveHint ]}</div>
+    </main>
+
+    <footer>
+      <button class="btn ghost" @click="prev" :disabled="currentIndex === 0">上一題</button>
+      <button v-if="!isLast" class="btn primary" @click="next" :disabled="!canAdvance">下一題</button>
+      <button v-else class="btn primary" @click="submit" :disabled="!canAdvance || submitting">
+        {[ submitting ? '送出中…' : (isPreview ? '完成（預覽不儲存）' : '完成送出') ]}
+      </button>
+    </footer>
+  </template>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="{% static 'js/questionnaire_fill.js' %}"></script>
+{% endblock %}
