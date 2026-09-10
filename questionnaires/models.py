@@ -445,7 +445,17 @@ class BranchRule(VersionScopedModel):
 
     def __str__(self):
         target = self.target_section or self.target_question or self.target_questionnaire
-        return f"若「{self.trigger_question}」{self.get_trigger_operator_display()} {self.trigger_value} → {self.get_action_display()}「{target}」"
+        if self.trigger_operator == self.Operator.ANSWERED:
+            cond = "有作答"
+        else:
+            # 觸發值若對應到某個選項，顯示該選項文字而非內部值（opt2）
+            label = next(
+                (o.label for o in self.trigger_question.options.all()
+                 if o.value == self.trigger_value),
+                self.trigger_value,
+            )
+            cond = f"{self.get_trigger_operator_display()} {label}"
+        return f"若「{self.trigger_question}」{cond} → {self.get_action_display()}「{target}」"
 
     def owning_version(self):
         return self.trigger_question.section.version
