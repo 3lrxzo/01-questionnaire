@@ -5,7 +5,9 @@ from . import api_views, views
 app_name = "questionnaires"
 
 urlpatterns = [
-    # 家長端填答頁（HTML + Vue）
+    # 家長端
+    path("", views.home, name="home"),
+    path("child/<int:child_id>/", views.child_home, name="child-home"),
     path("fill/<int:version_id>/", views.fill_page, name="fill"),
 
     # JSON API（《開發規劃書》第六節）
