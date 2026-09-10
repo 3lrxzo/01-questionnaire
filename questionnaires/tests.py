@@ -6,9 +6,11 @@
 測試，避免日後重構時被摘掉。
 """
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
+from django.urls import reverse
 
 from .models import (
     BranchRule, Option, Question, Questionnaire, QuestionnaireVersion, Section, Tier,
@@ -155,6 +157,77 @@ class CloneAsNewDraftTests(VersionFixtureMixin, TestCase):
         question.save()
 
         self.assertEqual(Question.objects.get(pk=self.fever.pk).prompt, "孩子今天是否有發燒？")
+
+
+class AdminSmokeTests(VersionFixtureMixin, TestCase):
+    """後台頁面能開、發布 action 能跑、已發布版本的內容 inline 轉唯讀。"""
+
+    def setUp(self):
+        self.version, self.section, self.fever, self.followup = self.build_draft_version()
+        User = get_user_model()
+        self.admin = User.objects.create_superuser("admin", "admin@example.com", "pw-for-test")
+        self.client.force_login(self.admin)
+
+    def test_key_admin_pages_load(self):
+        for name in [
+            "admin:questionnaires_questionnaire_changelist",
+            "admin:questionnaires_questionnaireversion_changelist",
+            "admin:questionnaires_section_changelist",
+            "admin:questionnaires_question_changelist",
+            "admin:questionnaires_questionnaireresponse_changelist",
+            "admin:children_child_changelist",
+        ]:
+            self.assertEqual(self.client.get(reverse(name)).status_code, 200, name)
+
+    def test_version_change_page_loads_for_draft_and_published(self):
+        url = reverse("admin:questionnaires_questionnaireversion_change", args=[self.version.pk])
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.version.publish()
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_publish_action_publishes(self):
+        url = reverse("admin:questionnaires_questionnaireversion_changelist")
+        self.client.post(url, {
+            "action": "action_publish",
+            "_selected_action": [str(self.version.pk)],
+        })
+        self.version.refresh_from_db()
+        self.assertEqual(self.version.status, QuestionnaireVersion.Status.PUBLISHED)
+
+    def test_clone_action_creates_draft(self):
+        self.version.publish()
+        url = reverse("admin:questionnaires_questionnaireversion_changelist")
+        self.client.post(url, {
+            "action": "action_clone",
+            "_selected_action": [str(self.version.pk)],
+        })
+        self.assertEqual(self.version.questionnaire.versions.count(), 2)
+        self.assertTrue(
+            self.version.questionnaire.versions.filter(
+                version_number=2, status=QuestionnaireVersion.Status.DRAFT
+            ).exists()
+        )
+
+    def test_section_inline_is_readonly_once_published(self):
+        from questionnaires.admin import QuestionnaireVersionAdmin
+        from django.contrib.admin.sites import site
+
+        self.version.publish()
+        version_admin = QuestionnaireVersionAdmin(QuestionnaireVersion, site)
+        section_inline = next(
+            inline for inline in version_admin.get_inline_instances(_request(self.admin))
+            if inline.model is Section
+        )
+        self.assertFalse(section_inline.has_add_permission(_request(self.admin), self.version))
+        self.assertFalse(section_inline.has_change_permission(_request(self.admin), self.version))
+
+
+def _request(user):
+    from django.test import RequestFactory
+
+    request = RequestFactory().get("/")
+    request.user = user
+    return request
 
 
 class BranchRuleTargetConstraintTests(VersionFixtureMixin, TestCase):
