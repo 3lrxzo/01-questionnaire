@@ -37,6 +37,14 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
 SESSION_COOKIE_NAME = "m04_sessionid"
 CSRF_COOKIE_NAME = "m04_csrftoken"
 
+# Django 4.0+ 會比對請求的 Origin 標頭。填答頁的 fetch 是同源請求，
+# 但瀏覽器送出的 Origin 可能帶或不帶 port，兩種都列入信任。
+# 正式部署時由 .env 設定真實網域（含 https://）。
+CSRF_TRUSTED_ORIGINS = env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
+    "http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1,http://localhost",
+)
+
 
 # --- 應用程式 -----------------------------------------------------------
 
