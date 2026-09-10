@@ -1,1 +1,170 @@
-{% extends "base.html" %}{% block body %}<div id="app">builder list placeholder</div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}問卷管理{% endblock %}
+
+{% block style %}
+  .wrap { max-width: 860px; margin: 0 auto; padding: 28px 20px 80px; }
+  .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  h1 { font-size: 1.3rem; margin: 0; }
+  .hint { color: var(--muted); font-size: .85rem; margin-bottom: 24px; }
+  button, .btn { font-family: inherit; font-size: .9rem; cursor: pointer; border-radius: 8px; }
+  .btn-primary { background: var(--brand); color: #fff; border: 1px solid var(--brand); padding: 9px 16px; }
+  .btn-primary:hover { background: var(--brand-dark); }
+  .btn-ghost { background: var(--card); color: var(--brand); border: 1px solid var(--border); padding: 7px 13px; text-decoration: none; display: inline-block; }
+  .btn-ghost:hover { border-color: var(--brand); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+  .card h2 { font-size: 1.05rem; margin: 0 0 3px; }
+  .card .cat { color: var(--muted); font-size: .82rem; margin-bottom: 12px; }
+  .versions { display: flex; flex-direction: column; gap: 8px; }
+  .vrow { display: flex; align-items: center; gap: 12px; padding: 9px 12px; background: var(--bg); border-radius: 8px; }
+  .vrow .vn { font-weight: 600; min-width: 42px; }
+  .badge { font-size: .72rem; padding: 3px 9px; border-radius: 999px; }
+  .badge.draft { background: #e5e7eb; color: #444; }
+  .badge.published { background: #dcecdf; color: #2f6f4f; }
+  .badge.retired { background: #f0e0e0; color: #8a4a4a; }
+  .vrow .spacer { flex: 1; }
+  .vrow a, .vrow button { font-size: .82rem; }
+  .vrow .link { color: var(--brand); background: none; border: none; text-decoration: underline; padding: 4px; }
+  dialog { border: none; border-radius: 14px; padding: 24px; max-width: 420px; width: 90%; }
+  dialog::backdrop { background: rgba(0,0,0,.35); }
+  dialog h3 { margin: 0 0 16px; }
+  dialog label { display: block; font-size: .85rem; margin: 12px 0 4px; color: var(--muted); }
+  dialog input, dialog select, dialog textarea { width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: .92rem; }
+  dialog .actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  .empty { color: var(--muted); text-align: center; padding: 50px 0; }
+  .err { color: var(--danger); font-size: .85rem; margin-top: 8px; }
+{% endblock %}
+
+{% block body %}
+<div class="wrap" id="page"
+     data-csrf="{{ csrf_token }}"
+     data-list-url="{% url 'builder:api-questionnaires' %}">
+  <div class="head">
+    <h1>問卷管理</h1>
+    <button class="btn-primary" onclick="document.getElementById('newDlg').showModal()">＋ 新增問卷</button>
+  </div>
+  <div class="hint">在這裡建立與維護健康問卷。每份問卷可有多個版本，已發布的版本不可直接修改，需「複製為新版本」。</div>
+
+  <div id="list"><div class="empty">載入中…</div></div>
+</div>
+
+<dialog id="newDlg">
+  <h3>新增問卷</h3>
+  <form method="dialog" id="newForm">
+    <label>問卷名稱 *</label>
+    <input name="name" required maxlength="200" placeholder="例如：氣喘週追蹤">
+    <label>說明</label>
+    <textarea name="description" rows="2"></textarea>
+    <label>分類</label>
+    <select name="category">
+      <option value="">（不指定）</option>
+      {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+    </select>
+    <label>分層（Tier）</label>
+    <select name="tier">
+      <option value="">（不指定）</option>
+      {% for t in tiers %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+    </select>
+    <div class="err" id="newErr" hidden></div>
+    <div class="actions">
+      <button type="button" class="btn-ghost" onclick="document.getElementById('newDlg').close()">取消</button>
+      <button type="submit" class="btn-primary">建立並開始編輯</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const page = document.getElementById("page");
+const CSRF = page.dataset.csrf;
+const LIST_URL = page.dataset.listUrl;
+
+async function api(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { "Content-Type": "application/json", "X-CSRFToken": CSRF },
+    ...opts,
+  });
+  if (!res.ok) {
+    let detail = "HTTP " + res.status;
+    try { detail = (await res.json()).detail || detail; } catch {}
+    throw new Error(detail);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function badge(status, label) {
+  return `<span class="badge ${status}">${label}</span>`;
+}
+
+async function render() {
+  const list = document.getElementById("list");
+  const items = await api(LIST_URL);
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">尚無問卷，點右上角「新增問卷」開始。</div>';
+    return;
+  }
+  list.innerHTML = items.map(q => `
+    <div class="card">
+      <h2>${esc(q.name)}</h2>
+      <div class="cat">${[q.category_name, q.tier_name].filter(Boolean).join("・") || "未分類"}</div>
+      <div class="versions">
+        ${q.versions.map(v => `
+          <div class="vrow">
+            <span class="vn">v${v.version_number}</span>
+            ${badge(v.status, v.status_label)}
+            <span class="spacer"></span>
+            ${v.status === "draft"
+              ? `<a class="btn-ghost" href="/build/version/${v.id}/">編輯</a>`
+              : ""}
+            ${v.status === "published"
+              ? `<button class="link" onclick="clone(${v.id})">複製為新版本</button>
+                 <button class="link" onclick="retire(${v.id})">停用</button>`
+              : ""}
+            ${v.status !== "draft"
+              ? `<a class="btn-ghost" href="/build/version/${v.id}/">檢視</a>` : ""}
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `).join("");
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+async function clone(versionId) {
+  try {
+    const v = await api(`/api/builder/versions/${versionId}/clone/`, { method: "POST" });
+    location.href = `/build/version/${v.id}/`;
+  } catch (e) { alert("複製失敗：" + e.message); }
+}
+
+async function retire(versionId) {
+  if (!confirm("確定停用這個版本？停用後家長端不會再顯示這份問卷，既有填答紀錄不受影響。")) return;
+  try { await api(`/api/builder/versions/${versionId}/retire/`, { method: "POST" }); render(); }
+  catch (e) { alert("停用失敗：" + e.message); }
+}
+
+document.getElementById("newForm").addEventListener("submit", async (e) => {
+  const fd = new FormData(e.target);
+  const body = {
+    name: fd.get("name"),
+    description: fd.get("description") || "",
+  };
+  if (fd.get("category")) body.category = Number(fd.get("category"));
+  if (fd.get("tier")) body.tier = Number(fd.get("tier"));
+  const err = document.getElementById("newErr");
+  err.hidden = true;
+  try {
+    const q = await api(LIST_URL, { method: "POST", body: JSON.stringify(body) });
+    location.href = `/build/version/${q.versions[0].id}/`;
+  } catch (ex) {
+    err.textContent = "建立失敗：" + ex.message;
+    err.hidden = false;
+    e.preventDefault();
+    document.getElementById("newDlg").open || document.getElementById("newDlg").showModal();
+  }
+});
+
+render().catch(e => {
+  document.getElementById("list").innerHTML = `<div class="empty">載入失敗：${esc(e.message)}</div>`;
+});
+</script>
+{% endblock %}

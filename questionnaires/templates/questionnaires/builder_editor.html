@@ -1,1 +1,250 @@
-{% extends "base.html" %}{% block body %}<div id="app">builder editor placeholder</div>{% endblock %}
+{% extends "base.html" %}
+{% load static %}
+{% block title %}編輯：{{ version.questionnaire.name }}{% endblock %}
+
+{% block style %}
+  #app { display: flex; flex-direction: column; height: 100vh; }
+  .topbar { display: flex; align-items: center; gap: 14px; padding: 10px 18px;
+            background: var(--card); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .topbar a.home { color: var(--muted); text-decoration: none; font-size: .85rem; }
+  .topbar h1 { font-size: 1rem; margin: 0; }
+  .topbar .vinfo { color: var(--muted); font-size: .82rem; }
+  .topbar .spacer { flex: 1; }
+  .badge { font-size: .72rem; padding: 3px 9px; border-radius: 999px; }
+  .badge.draft { background: #e5e7eb; color: #444; }
+  .badge.published { background: #dcecdf; color: #2f6f4f; }
+  .badge.retired { background: #f0e0e0; color: #8a4a4a; }
+  .btn { font-family: inherit; font-size: .85rem; cursor: pointer; border-radius: 8px; padding: 8px 14px; border: 1px solid var(--border); background: var(--card); }
+  .btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+  .btn.primary:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.small { padding: 4px 9px; font-size: .78rem; }
+  .btn.danger { color: var(--danger); border-color: #e8cccc; }
+
+  .lockbar { background: #fbf3d9; color: #7a5c1e; padding: 9px 18px; font-size: .85rem;
+             display: flex; align-items: center; gap: 12px; }
+
+  .cols { flex: 1; display: flex; min-height: 0; }
+  .outline { width: 270px; border-right: 1px solid var(--border); overflow-y: auto; padding: 14px; background: var(--card); }
+  .editor { flex: 1; overflow-y: auto; padding: 22px 26px; }
+  .preview { width: 400px; border-left: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg); }
+  .preview .pvhead { padding: 8px 12px; font-size: .8rem; color: var(--muted); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+  .preview iframe { flex: 1; border: none; width: 100%; background: #fff; }
+
+  .sec { margin-bottom: 12px; }
+  .sec-head { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: .9rem; padding: 5px 4px; }
+  .sec-head .t { flex: 1; cursor: pointer; }
+  .sec-head .t:hover { color: var(--brand); }
+  .q-item { display: flex; align-items: center; gap: 4px; padding: 5px 8px; margin: 2px 0 2px 12px;
+            border-radius: 6px; font-size: .85rem; cursor: pointer; border: 1px solid transparent; }
+  .q-item:hover { background: var(--bg); }
+  .q-item.active { background: #eef5f1; border-color: var(--brand); }
+  .q-item .qt { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mini { background: none; border: none; cursor: pointer; color: var(--muted); font-size: .8rem; padding: 2px 4px; }
+  .mini:hover { color: var(--brand); }
+  .addbtn { width: 100%; text-align: left; background: none; border: 1px dashed var(--border); color: var(--muted);
+            border-radius: 6px; padding: 6px 8px; font-size: .82rem; cursor: pointer; margin-top: 4px; }
+  .addbtn:hover { border-color: var(--brand); color: var(--brand); }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: 5px; }
+  .field input[type=text], .field textarea, .field select, .field input[type=number] {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+    font-family: inherit; font-size: .92rem; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .opt-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .opt-row input { flex: 1; }
+  .card2 { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+  .card2 h3 { margin: 0 0 14px; font-size: .95rem; }
+  .rule { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: .85rem; }
+  .rule .rl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .rule select, .rule input { padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; font-size: .82rem; }
+  .savehint { font-size: .78rem; color: var(--muted); }
+  .empty-editor { color: var(--muted); text-align: center; padding: 80px 20px; }
+  .checkline { display: flex; align-items: center; gap: 8px; font-size: .88rem; }
+{% endblock %}
+
+{% block body %}
+<div id="app"
+     data-version-id="{{ version.id }}"
+     data-csrf="{{ csrf_token }}"
+     data-preview-url="{% url 'questionnaires:fill' version.id %}?preview=1"
+     data-list-url="{% url 'builder:list' %}">
+  <div class="topbar">
+    <a class="home" href="{% url 'builder:list' %}">‹ 問卷管理</a>
+    <h1>{[ tree.questionnaire_name ]}</h1>
+    <span class="vinfo">v{[ tree.version_number ]}</span>
+    <span class="badge" :class="tree.status">{[ statusLabel ]}</span>
+    <span class="spacer"></span>
+    <span class="savehint">{[ saveHint ]}</span>
+    <button v-if="tree.is_editable" class="btn primary" :disabled="!canPublish" @click="publish">
+      發布新版本
+    </button>
+    <button v-else class="btn primary" @click="cloneVersion">複製為新版本</button>
+  </div>
+
+  <div v-if="!tree.is_editable" class="lockbar">
+    <span>此版本為「{[ statusLabel ]}」，內容已鎖定。要修改請點右上角「複製為新版本」。</span>
+  </div>
+
+  <div class="cols" v-if="tree.id">
+    <!-- 大綱 -->
+    <div class="outline">
+      <div v-for="(sec, si) in tree.sections" :key="sec.id" class="sec">
+        <div class="sec-head">
+          <button class="mini" :disabled="si===0" @click="moveSection(si,-1)">▲</button>
+          <button class="mini" :disabled="si===tree.sections.length-1" @click="moveSection(si,1)">▼</button>
+          <span class="t" @click="selectSection(sec)">{[ sec.title || '（未命名題組）' ]}</span>
+        </div>
+        <div v-for="(q, qi) in sec.questions" :key="q.id"
+             class="q-item" :class="{ active: selected && selected.id === q.id }"
+             @click="selectQuestion(q, sec)">
+          <button class="mini" :disabled="qi===0" @click.stop="moveQuestion(sec,qi,-1)">▲</button>
+          <button class="mini" :disabled="qi===sec.questions.length-1" @click.stop="moveQuestion(sec,qi,1)">▼</button>
+          <span class="qt">{[ q.prompt || '（未命名題目）' ]}</span>
+        </div>
+        <button v-if="tree.is_editable" class="addbtn" @click="addQuestion(sec)">＋ 在此題組加題目</button>
+      </div>
+      <button v-if="tree.is_editable" class="addbtn" @click="addSection">＋ 新增題組</button>
+    </div>
+
+    <!-- 編輯區 -->
+    <div class="editor">
+      <div v-if="selectedSection && !selected" >
+        <div class="card2">
+          <h3>題組設定</h3>
+          <div class="field">
+            <label>題組名稱</label>
+            <input type="text" v-model="selectedSection.title" @input="saveSectionDebounced" :disabled="!tree.is_editable">
+          </div>
+          <div class="field">
+            <label>說明（選填，僅後台可見）</label>
+            <textarea rows="2" v-model="selectedSection.description" @input="saveSectionDebounced" :disabled="!tree.is_editable"></textarea>
+          </div>
+          <button v-if="tree.is_editable" class="btn danger small" @click="deleteSection(selectedSection)">刪除整個題組</button>
+        </div>
+      </div>
+
+      <div v-else-if="selected">
+        <div class="card2">
+          <h3>題目內容</h3>
+          <div class="field">
+            <label>題目文字</label>
+            <input type="text" v-model="selected.prompt" @input="saveQuestionDebounced" :disabled="!tree.is_editable">
+          </div>
+          <div class="field">
+            <label>補充說明（選填，顯示在題目下方）</label>
+            <input type="text" v-model="selected.help_text" @input="saveQuestionDebounced" :disabled="!tree.is_editable">
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>題型</label>
+              <select v-model="selected.question_type" @change="saveQuestion" :disabled="!tree.is_editable">
+                <option value="single">單選</option>
+                <option value="multi">複選</option>
+                <option value="number">數值</option>
+                <option value="text">簡短文字</option>
+                <option value="scale">量表</option>
+                <option value="datetime">日期／時間</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>是否必填</label>
+              <div class="checkline" style="padding-top:9px">
+                <input type="checkbox" v-model="selected.required" @change="saveQuestion" :disabled="!tree.is_editable">
+                <span>{[ selected.required ? '必填' : '選填' ]}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 選項（單選/複選/量表）-->
+          <div class="field" v-if="['single','multi'].includes(selected.question_type)">
+            <label>選項</label>
+            <div class="opt-row" v-for="opt in selected.options" :key="opt.id">
+              <input type="text" v-model="opt.label" @input="saveOptionDebounced(opt)" :disabled="!tree.is_editable" placeholder="選項文字">
+              <button v-if="tree.is_editable" class="mini" @click="deleteOption(opt)">✕</button>
+            </div>
+            <button v-if="tree.is_editable" class="addbtn" @click="addOption">＋ 新增選項</button>
+          </div>
+
+          <!-- 數值設定 -->
+          <div class="row" v-if="selected.question_type === 'number'">
+            <div class="field"><label>最小值</label><input type="number" v-model.number="selected.config.min" @input="saveQuestionDebounced" :disabled="!tree.is_editable"></div>
+            <div class="field"><label>最大值</label><input type="number" v-model.number="selected.config.max" @input="saveQuestionDebounced" :disabled="!tree.is_editable"></div>
+            <div class="field"><label>單位</label><input type="text" v-model="selected.config.unit" @input="saveQuestionDebounced" :disabled="!tree.is_editable"></div>
+          </div>
+
+          <!-- 量表設定 -->
+          <div v-if="selected.question_type === 'scale'">
+            <div class="row">
+              <div class="field"><label>最小刻度</label><input type="number" v-model.number="selected.config.min" @input="saveQuestionDebounced" :disabled="!tree.is_editable"></div>
+              <div class="field"><label>最大刻度</label><input type="number" v-model.number="selected.config.max" @input="saveQuestionDebounced" :disabled="!tree.is_editable"></div>
+            </div>
+            <div class="row">
+              <div class="field"><label>最小端說明</label><input type="text" v-model="selected.config.min_label" @input="saveQuestionDebounced" :disabled="!tree.is_editable"></div>
+              <div class="field"><label>最大端說明</label><input type="text" v-model="selected.config.max_label" @input="saveQuestionDebounced" :disabled="!tree.is_editable"></div>
+            </div>
+          </div>
+
+          <button v-if="tree.is_editable" class="btn danger small" @click="deleteQuestion(selected)">刪除這一題</button>
+        </div>
+
+        <!-- 跳題規則 -->
+        <div class="card2">
+          <h3>跳題規則（依這一題的答案，決定要不要顯示其他內容）</h3>
+          <div class="rule" v-for="rule in rulesForSelected" :key="rule.id">
+            <div class="rl">
+              <span>當本題答案</span>
+              <select v-model="rule.trigger_operator" @change="saveRule(rule)" :disabled="!tree.is_editable">
+                <option value="eq">等於</option>
+                <option value="neq">不等於</option>
+                <option value="in">屬於其中</option>
+                <option value="gt">大於</option>
+                <option value="gte">大於等於</option>
+                <option value="lt">小於</option>
+                <option value="lte">小於等於</option>
+                <option value="answered">有作答（不論內容）</option>
+              </select>
+              <select v-if="rule.trigger_operator !== 'answered' && selected.options.length"
+                      v-model="rule.trigger_value" @change="saveRule(rule)" :disabled="!tree.is_editable">
+                <option v-for="opt in selected.options" :key="opt.id" :value="opt.value">{[ opt.label ]}</option>
+              </select>
+              <input v-else-if="rule.trigger_operator !== 'answered'" type="text"
+                     v-model="rule.trigger_value" @input="saveRuleDebounced(rule)" :disabled="!tree.is_editable" placeholder="值">
+              <span>就</span>
+              <select v-model="rule.action" @change="saveRule(rule)" :disabled="!tree.is_editable">
+                <option value="show">顯示</option>
+                <option value="hide">隱藏</option>
+              </select>
+              <select v-model="ruleTarget[rule.id]" @change="setRuleTarget(rule)" :disabled="!tree.is_editable">
+                <option v-for="sec in tree.sections" :key="'s'+sec.id" :value="'section:'+sec.id">題組「{[ sec.title ]}」</option>
+                <option v-for="q in allQuestions" :key="'q'+q.id" :value="'question:'+q.id">題目「{[ q.prompt ]}」</option>
+              </select>
+              <button v-if="tree.is_editable" class="mini" @click="deleteRule(rule)">✕</button>
+            </div>
+          </div>
+          <button v-if="tree.is_editable" class="addbtn" @click="addRule">＋ 新增跳題規則</button>
+        </div>
+      </div>
+
+      <div v-else class="empty-editor">
+        從左側選一個題目或題組來編輯，或點「＋ 新增題組」開始。
+      </div>
+    </div>
+
+    <!-- 預覽 -->
+    <div class="preview">
+      <div class="pvhead">
+        <span>家長端預覽</span>
+        <button class="btn small" @click="refreshPreview">重新整理</button>
+      </div>
+      <iframe ref="pv" :src="previewSrc"></iframe>
+    </div>
+  </div>
+
+  <div v-else class="empty-editor">載入中…</div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="{% static 'js/builder_editor.js' %}"></script>
+{% endblock %}
