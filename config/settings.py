@@ -116,6 +116,12 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# 第一階段家長端尚無獨立登入頁，未登入時導向後台登入頁（Django 預設的
+# /accounts/login/ 未設定，會 404）。家長端身分驗證機制待院方 APP
+# 介接規格確定後再換成正式登入流程。
+LOGIN_URL = "admin:login"
+LOGIN_REDIRECT_URL = "/"
+
 
 # --- 在地化 -------------------------------------------------------------
 # 後台使用者為兒科部人員，介面與時間一律為正體中文／台北時區
