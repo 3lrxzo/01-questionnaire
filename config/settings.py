@@ -31,6 +31,12 @@ DEBUG = env_bool("DJANGO_DEBUG", False)
 
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
 
+# 本機開發時 127.0.0.1 被所有專案共用，cookie 是跟著主機不跟著 port。
+# 用專案專屬名稱，避免別的本機 Django 專案的 sessionid / csrftoken
+# 互相蓋掉（症狀：CSRF cookie has incorrect length、莫名被登出）。
+SESSION_COOKIE_NAME = "m04_sessionid"
+CSRF_COOKIE_NAME = "m04_csrftoken"
+
 
 # --- 應用程式 -----------------------------------------------------------
 

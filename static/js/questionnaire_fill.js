@@ -9,14 +9,31 @@
   "use strict";
 
   const el = document.getElementById("app");
+
+  function cookie(name) {
+    const m = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+    return m ? m.pop() : "";
+  }
+
   const cfg = {
     versionId: el.dataset.versionId,
     preview: el.dataset.preview === "1",
     childId: el.dataset.childId || "",
     schemaUrl: el.dataset.schemaUrl,
     responsesUrl: el.dataset.responsesUrl,
-    csrf: el.dataset.csrf,
+    // 模板算出的 masked token 為主，讀不到就退回 cookie
+    csrf: el.dataset.csrf || cookie("m04_csrftoken"),
   };
+
+  async function readError(res) {
+    try {
+      const body = await res.json();
+      if (body.detail) return body.detail;
+      return JSON.stringify(body);
+    } catch {
+      return "HTTP " + res.status;
+    }
+  }
 
   // --- 與 logic.py evaluate_condition 對齊 ---------------------------------
   function toNumber(v) {
@@ -171,7 +188,7 @@
         const res = await fetch(cfg.schemaUrl + (cfg.preview ? "?preview=1" : ""), {
           headers: { "Accept": "application/json" },
         });
-        if (!res.ok) throw new Error("無法載入問卷內容（" + res.status + "）");
+        if (!res.ok) throw new Error("無法載入問卷內容：" + await readError(res));
         this.schema = await res.json();
 
         // 預設把複選題答案初始化為陣列，讓 v-model 綁定正常
@@ -204,7 +221,7 @@
           headers: { "Content-Type": "application/json", "X-CSRFToken": cfg.csrf },
           body: JSON.stringify({ child: cfg.childId, version: cfg.versionId }),
         });
-        if (!res.ok) throw new Error("無法建立填答紀錄（" + res.status + "）");
+        if (!res.ok) throw new Error("無法建立填答紀錄：" + await readError(res));
         const data = await res.json();
         this.responseId = data.id;
         // 續填：把已存的答案帶回
