@@ -19,6 +19,7 @@
     versionId: el.dataset.versionId,
     preview: el.dataset.preview === "1",
     childId: el.dataset.childId || "",
+    backUrl: el.dataset.backUrl || "/",
     schemaUrl: el.dataset.schemaUrl,
     responsesUrl: el.dataset.responsesUrl,
     // 模板算出的 masked token 為主，讀不到就退回 cookie
@@ -141,6 +142,7 @@
 
     computed: {
       isPreview() { return cfg.preview; },
+      backUrl() { return cfg.backUrl; },
 
       orderedQuestions() {
         if (!this.schema) return [];
@@ -207,6 +209,10 @@
     },
 
     methods: {
+      restartPreview() {
+        window.location.reload();
+      },
+
       scaleRange(q) {
         const min = q.config.min ?? 0;
         const max = q.config.max ?? 10;

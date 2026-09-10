@@ -8,6 +8,8 @@
   header { padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border); }
   header h1 { margin: 0; font-size: 1.05rem; }
   header .meta { color: var(--muted); font-size: .8rem; margin-top: 2px; }
+  header .leave { color: var(--muted); text-decoration: none; font-size: .8rem; display: inline-block; margin-bottom: 4px; }
+  header .leave:hover { color: var(--brand); }
   .preview-badge { display: inline-block; background: #eee2b8; color: #7a5c1e; font-size: .72rem;
                    padding: 2px 8px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
   .progress { height: 4px; background: var(--border); }
@@ -44,28 +46,43 @@
                 font-size: 2rem; line-height: 64px; margin: 0 auto 18px; }
   .error-box { background: #f7e4e4; color: var(--danger); border-radius: 10px; padding: 12px 14px;
                font-size: .88rem; margin-bottom: 16px; }
+  .backlink { display: inline-block; margin-top: 22px; padding: 11px 22px; border-radius: 10px;
+              background: var(--brand); color: #fff; text-decoration: none; font-weight: 600; font-size: .95rem; }
+  .backlink.ghost { background: var(--card); color: var(--brand); border: 1px solid var(--brand); }
+  .state-msg .backlink { margin-top: 16px; }
 {% endblock %}
 
 {% block body %}
 <div id="app" class="wrap" data-version-id="{{ version.id }}" data-preview="{{ preview|yesno:'1,0' }}"
      data-child-id="{{ child_id }}"
+     data-back-url="{% if child_id %}{% url 'questionnaires:child-home' child_id %}{% else %}{% url 'questionnaires:parent-home' %}{% endif %}"
      data-schema-url="{% url 'questionnaires:api-version-schema' version.id %}"
      data-responses-url="{% url 'questionnaires:api-response-create' %}"
      data-csrf="{{ csrf_token }}">
 
   <template v-if="loading"><div class="state-msg">載入中…</div></template>
-  <template v-else-if="loadError"><div class="state-msg">{[ loadError ]}</div></template>
+  <template v-else-if="loadError">
+    <div class="state-msg">
+      <p>{[ loadError ]}</p>
+      <a class="backlink ghost" :href="backUrl">返回</a>
+    </div>
+  </template>
 
   <template v-else-if="completed">
     <div class="done">
       <div class="tick">✓</div>
-      <h2>已完成</h2>
-      <p style="color:var(--muted)">感謝您的填答，結果已回存至孩子的健康紀錄。</p>
+      <h2>{[ isPreview ? '預覽結束' : '已完成' ]}</h2>
+      <p style="color:var(--muted)" v-if="!isPreview">感謝您的填答，結果已回存至孩子的健康紀錄。</p>
+      <p style="color:var(--muted)" v-else>預覽模式不會儲存任何填答。</p>
+      <br>
+      <a v-if="!isPreview" class="backlink" :href="backUrl">返回問卷列表</a>
+      <button v-else class="backlink" @click="restartPreview">重新開始預覽</button>
     </div>
   </template>
 
   <template v-else>
     <header>
+      <a v-if="!isPreview" class="leave" :href="backUrl">‹ 離開</a>
       <h1>
         {[ schema.questionnaire_name ]}
         <span v-if="isPreview" class="preview-badge">預覽模式</span>
