@@ -129,10 +129,35 @@ class QuestionnaireVersion(models.Model):
     def __str__(self):
         return f"{self.questionnaire.name} v{self.version_number}（{self.get_status_display()}）"
 
+    # 允許的狀態轉換。刻意沒有任何一條路可以回到「草稿」——
+    # 否則只要把已發布版本改回草稿就能繞過內容鎖，整套版本保護形同虛設。
+    ALLOWED_TRANSITIONS = {
+        Status.DRAFT: {Status.PUBLISHED},
+        Status.PUBLISHED: {Status.RETIRED},
+        Status.RETIRED: set(),
+    }
+
     @property
     def is_editable(self):
         """只有草稿可以改內容。這是整個系統最重要的一條約束。"""
         return self.status == self.Status.DRAFT
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            previous = (
+                QuestionnaireVersion.objects
+                .filter(pk=self.pk)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if previous is not None and previous != self.status:
+                if self.status not in self.ALLOWED_TRANSITIONS.get(previous, set()):
+                    raise ValidationError(
+                        f"不允許的狀態轉換：{self.Status(previous).label} → "
+                        f"{self.Status(self.status).label}。"
+                        f"已發布的版本不可退回草稿，請改用「複製為新版本」。"
+                    )
+        super().save(*args, **kwargs)
 
     @transaction.atomic
     def publish(self):

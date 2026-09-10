@@ -87,6 +87,39 @@ class PublishedVersionIsImmutableTests(VersionFixtureMixin, TestCase):
         with self.assertRaises(ValidationError):
             self.version.publish()
 
+    def test_cannot_revert_published_to_draft(self):
+        """把已發布版本改回草稿就能繞過內容鎖，必須擋在狀態轉換這關。"""
+        self.version.publish()
+        self.version.status = QuestionnaireVersion.Status.DRAFT
+        with self.assertRaises(ValidationError):
+            self.version.save()
+        self.assertEqual(
+            QuestionnaireVersion.objects.get(pk=self.version.pk).status,
+            QuestionnaireVersion.Status.PUBLISHED,
+        )
+
+    def test_cannot_revert_retired_to_draft(self):
+        self.version.publish()
+        self.version.retire()
+        self.version.status = QuestionnaireVersion.Status.DRAFT
+        with self.assertRaises(ValidationError):
+            self.version.save()
+
+    def test_cannot_reactivate_retired_version(self):
+        self.version.publish()
+        self.version.retire()
+        self.version.status = QuestionnaireVersion.Status.PUBLISHED
+        with self.assertRaises(ValidationError):
+            self.version.save()
+
+    def test_draft_to_published_transition_is_allowed(self):
+        self.version.status = QuestionnaireVersion.Status.PUBLISHED
+        self.version.save()
+        self.assertEqual(
+            QuestionnaireVersion.objects.get(pk=self.version.pk).status,
+            QuestionnaireVersion.Status.PUBLISHED,
+        )
+
 
 class CloneAsNewDraftTests(VersionFixtureMixin, TestCase):
     def setUp(self):
