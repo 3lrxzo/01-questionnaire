@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     # 第三方
     "rest_framework",
     # 本專案
+    "accounts.apps.AccountsConfig",
     "children.apps.ChildrenConfig",
     "questionnaires.apps.QuestionnairesConfig",
 ]
@@ -116,11 +117,12 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-# 第一階段家長端尚無獨立登入頁，未登入時導向後台登入頁（Django 預設的
-# /accounts/login/ 未設定，會 404）。家長端身分驗證機制待院方 APP
-# 介接規格確定後再換成正式登入流程。
-LOGIN_URL = "admin:login"
-LOGIN_REDIRECT_URL = "/"
+# 家長端登入／註冊（@login_required 導向這裡）。
+# 醫護端頁面用 @staff_member_required，會自行導向 /admin/login/。
+# 院方 APP 介接後，家長身分改由 APP 帶入，這套帳密流程僅供展示與測試。
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "/parent/"
+LOGOUT_REDIRECT_URL = "/"
 
 
 # --- 在地化 -------------------------------------------------------------

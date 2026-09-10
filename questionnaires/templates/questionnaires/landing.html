@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}金寶貝健康問卷{% endblock %}
+
+{% block style %}
+  .wrap { max-width: 640px; margin: 0 auto; padding: 56px 20px; text-align: center; }
+  .logo { font-size: 1.5rem; font-weight: 700; color: var(--brand); margin-bottom: 6px; }
+  .tag { color: var(--muted); font-size: .9rem; margin-bottom: 44px; }
+  .cards { display: grid; gap: 16px; }
+  @media (min-width: 560px) { .cards { grid-template-columns: 1fr 1fr; } }
+  a.role { display: block; background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+           padding: 32px 24px; text-decoration: none; color: var(--text); transition: border-color .15s, transform .15s; }
+  a.role:hover { border-color: var(--brand); transform: translateY(-2px); }
+  a.role .icon { font-size: 2.4rem; margin-bottom: 12px; }
+  a.role .name { font-size: 1.15rem; font-weight: 600; margin-bottom: 6px; }
+  a.role .desc { color: var(--muted); font-size: .84rem; line-height: 1.5; }
+  .foot { margin-top: 40px; color: var(--muted); font-size: .78rem; }
+  .foot a { color: var(--brand); }
+{% endblock %}
+
+{% block body %}
+<div class="wrap">
+  <div class="logo">金寶貝健康問卷</div>
+  <div class="tag">馬偕金寶貝智能化居家互動整合平台</div>
+
+  <div class="cards">
+    <a class="role" href="{% url 'questionnaires:parent-home' %}">
+      <div class="icon">👪</div>
+      <div class="name">家長 / 照顧者</div>
+      <div class="desc">填寫孩子的健康問卷、查看填答紀錄</div>
+    </a>
+    <a class="role" href="{% url 'builder:list' %}">
+      <div class="icon">🏥</div>
+      <div class="name">醫護人員</div>
+      <div class="desc">設計、發布與維護健康問卷</div>
+    </a>
+  </div>
+
+  <div class="foot">
+    {% if user.is_authenticated %}
+      目前登入：{{ user.get_full_name|default:user.username }}　·　{% include "_logout_link.html" %}
+    {% else %}
+      家長首次使用請先<a href="{% url 'accounts:register' %}">註冊帳號</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}家長登入{% endblock %}
+{% block style %}{% include "_form_style.html" %}{% endblock %}
+
+{% block body %}
+<div class="authwrap">
+  <a class="back" href="{% url 'questionnaires:landing' %}">‹ 回首頁</a>
+  <h1>家長登入</h1>
+  <div class="sub">登入以填寫孩子的健康問卷</div>
+
+  {% if form.non_field_errors %}
+    <div class="nonfield">{{ form.non_field_errors|join:"；" }}</div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="f">
+      <label for="{{ form.username.id_for_label }}">帳號</label>
+      {{ form.username }}
+      {{ form.username.errors }}
+    </div>
+    <div class="f">
+      <label for="{{ form.password.id_for_label }}">密碼</label>
+      {{ form.password }}
+      {{ form.password.errors }}
+    </div>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="btn" type="submit">登入</button>
+  </form>
+
+  <div class="alt">還沒有帳號？<a href="{% url 'accounts:register' %}">註冊</a></div>
+</div>
+{% endblock %}

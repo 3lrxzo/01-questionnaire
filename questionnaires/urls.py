@@ -5,12 +5,16 @@ from . import api_views, views
 app_name = "questionnaires"
 
 urlpatterns = [
-    # 家長端
-    path("", views.home, name="home"),
+    # --- 首頁 ---
+    path("", views.landing, name="landing"),
+
+    # --- 家長端 ---
+    path("parent/", views.parent_home, name="parent-home"),
+    path("parent/child/add/", views.child_add, name="child-add"),
     path("child/<int:child_id>/", views.child_home, name="child-home"),
     path("fill/<int:version_id>/", views.fill_page, name="fill"),
 
-    # JSON API（《開發規劃書》第六節）
+    # --- JSON API（《開發規劃書》第六節）---
     path("api/questionnaires/<int:version_id>/schema/",
          api_views.VersionSchemaView.as_view(), name="api-version-schema"),
     path("api/responses/",

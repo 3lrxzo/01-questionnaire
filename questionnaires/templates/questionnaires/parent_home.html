@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}我的孩子{% endblock %}
+
+{% block style %}
+  .wrap { max-width: 560px; margin: 0 auto; padding: 28px 20px; }
+  .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  h1 { font-size: 1.25rem; margin: 0; }
+  .who { color: var(--muted); font-size: .8rem; }
+  .who a { color: var(--brand); }
+  .sub { color: var(--muted); font-size: .85rem; margin-bottom: 22px; }
+  a.child { display: flex; justify-content: space-between; align-items: center;
+            background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 16px 18px; margin-bottom: 12px; text-decoration: none; color: var(--text); }
+  a.child:hover { border-color: var(--brand); }
+  a.child .meta { color: var(--muted); font-size: .8rem; margin-top: 2px; }
+  a.child .arrow { color: var(--muted); }
+  a.add { display: block; text-align: center; border: 1px dashed var(--border); border-radius: 12px;
+          padding: 14px; color: var(--brand); text-decoration: none; font-size: .9rem; }
+  a.add:hover { border-color: var(--brand); background: #eef5f1; }
+{% endblock %}
+
+{% block body %}
+<div class="wrap">
+  <div class="head">
+    <h1>我的孩子</h1>
+    <span class="who">{{ user.get_full_name|default:user.username }}　·　{% include "_logout_link.html" %}</span>
+  </div>
+  <div class="sub">點孩子的名字進入健康問卷</div>
+
+  {% for child in children %}
+    <a class="child" href="{% url 'questionnaires:child-home' child.id %}">
+      <span>
+        <strong>{{ child.name }}</strong>
+        <div class="meta">
+          {{ child.birth_date }}・{{ child.age_months }} 個月
+          {% if child.tracking_status %}・{{ child.tracking_status }}{% endif %}
+        </div>
+      </span>
+      <span class="arrow">›</span>
+    </a>
+  {% endfor %}
+
+  <a class="add" href="{% url 'questionnaires:child-add' %}">＋ 新增孩子</a>
+</div>
+{% endblock %}

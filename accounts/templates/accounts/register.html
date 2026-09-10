@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}家長註冊{% endblock %}
+{% block style %}{% include "_form_style.html" %}{% endblock %}
+
+{% block body %}
+<div class="authwrap">
+  <a class="back" href="{% url 'questionnaires:landing' %}">‹ 回首頁</a>
+  <h1>家長註冊</h1>
+  <div class="sub">建立帳號後即可登錄孩子資料並開始填寫健康問卷</div>
+
+  {% if form.non_field_errors %}
+    <div class="nonfield">{{ form.non_field_errors|join:"；" }}</div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="f">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<span class="helptext">{{ field.help_text|safe }}</span>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <button class="btn" type="submit">註冊並登入</button>
+  </form>
+
+  <div class="alt">已經有帳號了？<a href="{% url 'accounts:login' %}">登入</a></div>
+</div>
+{% endblock %}

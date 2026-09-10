@@ -70,26 +70,27 @@ class ChildHomeTests(TestCase):
         res = self.client.get(reverse("questionnaires:child-home", args=[self.child.id]))
         self.assertEqual(res.status_code, 200)
 
-    def test_home_redirects_when_single_child(self):
-        self.client.force_login(self.parent)
-        res = self.client.get(reverse("questionnaires:home"))
-        self.assertRedirects(
-            res, reverse("questionnaires:child-home", args=[self.child.id]),
-            fetch_redirect_response=False,
-        )
-
-    def test_home_lists_children_when_multiple(self):
+    def test_parent_home_lists_children(self):
         Child.objects.create(
             name="小華", birth_date=timezone.localdate() - timedelta(days=365 * 5),
             guardian=self.parent,
         )
         self.client.force_login(self.parent)
-        res = self.client.get(reverse("questionnaires:home"))
+        res = self.client.get(reverse("questionnaires:parent-home"))
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "小明")
         self.assertContains(res, "小華")
 
+    def test_parent_home_redirects_to_add_when_no_children(self):
+        User = get_user_model()
+        childless = User.objects.create_user("childless", password="pw")
+        self.client.force_login(childless)
+        res = self.client.get(reverse("questionnaires:parent-home"))
+        self.assertRedirects(
+            res, reverse("questionnaires:child-add"), fetch_redirect_response=False,
+        )
+
     def test_requires_login(self):
         res = self.client.get(reverse("questionnaires:child-home", args=[self.child.id]))
         self.assertEqual(res.status_code, 302)
-        self.assertIn("/admin/login/", res["Location"])
+        self.assertIn("/accounts/login/", res["Location"])

@@ -1,0 +1,19 @@
+{# 家長端表單頁共用樣式，於各 template 的 {% block style %} 內 {% include %} #}
+  .authwrap { max-width: 420px; margin: 0 auto; padding: 48px 20px; }
+  .authwrap h1 { font-size: 1.25rem; margin: 0 0 4px; }
+  .authwrap .sub { color: var(--muted); font-size: .85rem; margin-bottom: 26px; }
+  .authwrap form p, .authwrap .f { margin: 0 0 15px; }
+  .authwrap label { display: block; font-size: .84rem; color: var(--muted); margin-bottom: 5px; }
+  .authwrap input, .authwrap select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px;
+    font-family: inherit; font-size: .95rem; background: var(--card); color: var(--text); }
+  .authwrap input:focus, .authwrap select:focus { outline: 2px solid var(--brand); border-color: var(--brand); }
+  .authwrap .helptext { display: block; color: var(--muted); font-size: .76rem; margin-top: 4px; }
+  .authwrap ul.errorlist { list-style: none; padding: 0; margin: 4px 0 0; color: var(--danger); font-size: .8rem; }
+  .authwrap .btn { width: 100%; padding: 12px; border: none; border-radius: 9px; background: var(--brand);
+    color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 6px; }
+  .authwrap .btn:hover { background: var(--brand-dark); }
+  .authwrap .alt { text-align: center; margin-top: 18px; font-size: .85rem; color: var(--muted); }
+  .authwrap .alt a { color: var(--brand); }
+  .authwrap .back { display: inline-block; margin-bottom: 18px; color: var(--brand); text-decoration: none; font-size: .85rem; }
+  .authwrap .nonfield { color: var(--danger); font-size: .85rem; margin-bottom: 14px; }

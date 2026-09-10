@@ -2,12 +2,18 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 
+from accounts.forms import ChildForm
 from children.models import Child
 
 from .logic import get_pending_questionnaires
 from .models import QuestionnaireResponse, QuestionnaireVersion
 
 STATE_LABEL = {"in_progress": "未完成", "unrecorded": "未記錄"}
+
+
+def landing(request):
+    """首頁：選擇進入家長端或醫護人員端。"""
+    return render(request, "questionnaires/landing.html")
 
 
 def _children_for(request):
@@ -23,12 +29,27 @@ def _children_for(request):
 
 
 @login_required
-def home(request):
-    """入口：選擇要檢視哪個孩子。只有一個孩子時直接進去。"""
+def parent_home(request):
+    """家長端主頁：名下孩子清單 + 新增孩子入口。"""
     children = list(_children_for(request))
-    if len(children) == 1:
-        return redirect("questionnaires:child-home", child_id=children[0].id)
-    return render(request, "questionnaires/home.html", {"children": children})
+    if not children:
+        return redirect("questionnaires:child-add")
+    return render(request, "questionnaires/parent_home.html", {"children": children})
+
+
+@login_required
+def child_add(request):
+    """家長登錄孩子資料。"""
+    if request.method == "POST":
+        form = ChildForm(request.POST)
+        if form.is_valid():
+            child = form.save(commit=False)
+            child.guardian = request.user
+            child.save()
+            return redirect("questionnaires:child-home", child_id=child.id)
+    else:
+        form = ChildForm()
+    return render(request, "questionnaires/child_form.html", {"form": form})
 
 
 @login_required

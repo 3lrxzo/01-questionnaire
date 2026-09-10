@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}登錄孩子資料{% endblock %}
+{% block style %}{% include "_form_style.html" %}{% endblock %}
+
+{% block body %}
+<div class="authwrap">
+  <a class="back" href="{% url 'questionnaires:parent-home' %}">‹ 返回</a>
+  <h1>登錄孩子資料</h1>
+  <div class="sub">系統會依孩子的年齡與追蹤狀態，決定要呈現哪些健康問卷</div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="f">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+        {{ field.errors }}
+      </div>
+    {% endfor %}
+    <button class="btn" type="submit">儲存</button>
+  </form>
+</div>
+{% endblock %}

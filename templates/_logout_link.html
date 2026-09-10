@@ -1,0 +1,8 @@
+{# 登出用小表單（Django 5 的 LogoutView 只接受 POST）。樣式讓它看起來像連結。 #}
+<form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
+  {% csrf_token %}
+  <button type="submit"
+          style="background:none;border:none;padding:0;color:var(--brand);cursor:pointer;font:inherit;text-decoration:underline">
+    登出
+  </button>
+</form>
