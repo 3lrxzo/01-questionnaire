@@ -19,7 +19,10 @@ from .models import (
 
 class VersionFixtureMixin:
     def build_draft_version(self):
-        tier = Tier.objects.create(code="tier1", name="Tier 1 日常低負擔健康檢核", order=1)
+        # Tier 0～5 由 migration 0002 建立，測試 DB 也會有，故用 get_or_create
+        tier, _ = Tier.objects.get_or_create(
+            code="tier1", defaults={"name": "Tier 1 日常低負擔健康檢核", "order": 1},
+        )
         questionnaire = Questionnaire.objects.create(name="每日健康檢核", tier=tier)
         version = QuestionnaireVersion.objects.create(questionnaire=questionnaire, version_number=1)
         section = Section.objects.create(version=version, title="每日必填", order=1)
@@ -228,6 +231,40 @@ def _request(user):
     request = RequestFactory().get("/")
     request.user = user
     return request
+
+
+class SeedDataTests(TestCase):
+    def test_tier_seed_migration_created_tier_0_through_5(self):
+        codes = set(Tier.objects.values_list("code", flat=True))
+        self.assertTrue({"tier0", "tier1", "tier2", "tier3", "tier4", "tier5"}.issubset(codes))
+
+    def test_seed_demo_questionnaire_builds_fever_branch(self):
+        from django.core.management import call_command
+        from io import StringIO
+
+        call_command("seed_demo_questionnaire", "--publish", stdout=StringIO())
+
+        questionnaire = Questionnaire.objects.get(name="每日健康檢核（示範）")
+        version = questionnaire.current_published_version()
+        self.assertIsNotNone(version)
+
+        fever = Question.objects.get(section__version=version, prompt="孩子今天是否有發燒？")
+        followup = Section.objects.get(version=version, title="發燒追問")
+        rule = BranchRule.objects.get(trigger_question=fever)
+
+        self.assertEqual(rule.trigger_value, "yes")
+        self.assertEqual(rule.action, BranchRule.Action.SHOW)
+        self.assertEqual(rule.target_section_id, followup.pk)
+
+    def test_seed_demo_questionnaire_is_idempotent(self):
+        from django.core.management import call_command
+        from io import StringIO
+
+        call_command("seed_demo_questionnaire", stdout=StringIO())
+        call_command("seed_demo_questionnaire", stdout=StringIO())
+        self.assertEqual(
+            Questionnaire.objects.filter(name="每日健康檢核（示範）").count(), 1
+        )
 
 
 class BranchRuleTargetConstraintTests(VersionFixtureMixin, TestCase):
