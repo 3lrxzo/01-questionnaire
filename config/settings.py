@@ -94,18 +94,27 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # --- 資料庫 -------------------------------------------------------------
-# PostgreSQL：問卷 schema 的彈性欄位與填答內容使用 JSONB 儲存
+# 正式環境使用 PostgreSQL；本機若沒有 PostgreSQL，可設 DATABASE_ENGINE=sqlite
+# 先使用專案目錄內的 SQLite，讓頁面與功能可以直接啟動。
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DATABASE_NAME", "m04_questionnaire"),
-        "USER": os.getenv("DATABASE_USER", ""),
-        "PASSWORD": os.getenv("DATABASE_PASSWORD", ""),
-        "HOST": os.getenv("DATABASE_HOST", "localhost"),
-        "PORT": os.getenv("DATABASE_PORT", "5432"),
+if os.getenv("DATABASE_ENGINE", "postgresql").strip().lower() == "sqlite":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DATABASE_NAME", "m04_questionnaire"),
+            "USER": os.getenv("DATABASE_USER", ""),
+            "PASSWORD": os.getenv("DATABASE_PASSWORD", ""),
+            "HOST": os.getenv("DATABASE_HOST", "localhost"),
+            "PORT": os.getenv("DATABASE_PORT", "5432"),
+        }
+    }
 
 
 # --- 認證 ---------------------------------------------------------------
